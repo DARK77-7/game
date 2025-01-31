@@ -1,35 +1,136 @@
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+// تحميل الأصول
+const playerImage = new Image();
+playerImage.src = 'assets/images/player.png'; // تأكد من وضع الصورة في المسار الصحيح
+
+const enemyImage = new Image();
+enemyImage.src = 'assets/images/enemy.png'; // تأكد من وضع الصورة في المسار الصحيح
+
+const shootSound = new Audio('assets/sounds/shot.wav'); // تأكد من وضع الصوت في المسار الصحيح
+const explosionSound = new Audio('assets/sounds/explosion.wav'); // تأكد من وضع الصوت في المسار الصحيح
+
+let player = {
+    x: canvas.width / 2,
+    y: canvas.height - 100,
+    width: 50,
+    height: 50,
+    speed: 5,
+    color: 'blue',
+    health: 100,
+    money: 0
+};
+
+let enemies = [];
+let bullets = [];
+let level = 1;
+let money = 0;
+
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowLeft' && player.x > 0) {
+        player.x -= player.speed;
+    } else if (e.key === 'ArrowRight' && player.x < canvas.width - player.width) {
+        player.x += player.speed;
+    } else if (e.key === ' ' && player.health > 0) {
+        shootBullet();
+    }
+});
+
+function shootBullet() {
+    bullets.push({
+        x: player.x + player.width / 2,
+        y: player.y,
+        width: 5,
+        height: 10,
+        speed: 7,
+        color: 'red'
+    });
+    shootSound.play(); // تشغيل الصوت عند إطلاق النار
 }
-body {
-    font-family: Arial, sans-serif;
-    background-color: #000;
+
+function drawPlayer() {
+    ctx.drawImage(playerImage, player.x, player.y, player.width, player.height); // استخدام صورة اللاعب
 }
-#game-container {
-    position: relative;
-    width: 100%;
-    height: 100vh;
-    overflow: hidden;
+
+function drawEnemies() {
+    enemies.forEach((enemy, index) => {
+        ctx.drawImage(enemyImage, enemy.x, enemy.y, 50, 50); // استخدام صورة العدو
+        enemy.y += 2;
+        if (enemy.y > canvas.height) {
+            enemies.splice(index, 1);
+            player.health -= 10;
+        }
+    });
 }
-#gameCanvas {
-    width: 100%;
-    height: 100%;
+
+function drawBullets() {
+    bullets.forEach((bullet, index) => {
+        ctx.fillStyle = bullet.color;
+        ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
+        bullet.y -= bullet.speed;
+        if (bullet.y < 0) {
+            bullets.splice(index, 1);
+        }
+    });
 }
-#hud {
-    position: absolute;
-    top: 20px;
-    left: 20px;
-    color: white;
-    font-size: 18px;
+
+function spawnEnemies() {
+    if (Math.random() < 0.02 * level) {
+        enemies.push({
+            x: Math.random() * canvas.width,
+            y: 0
+        });
+    }
 }
-#shopButton {
-    position: absolute;
-    top: 50px;
-    left: 20px;
-    padding: 10px;
-    background-color: #fff;
-    border: none;
-    cursor: pointer;
+
+function checkCollisions() {
+    bullets.forEach((bullet, bIndex) => {
+        enemies.forEach((enemy, eIndex) => {
+            if (bullet.x < enemy.x + 50 && bullet.x + bullet.width > enemy.x && bullet.y < enemy.y + 50 && bullet.y + bullet.height > enemy.y) {
+                bullets.splice(bIndex, 1);
+                enemies.splice(eIndex, 1);
+                money += 10;
+                explosionSound.play(); // تشغيل الصوت عند الاصطدام
+            }
+        });
+    });
 }
+
+function drawHUD() {
+    document.getElementById('money').textContent = money;
+    document.getElementById('level').textContent = level;
+    document.getElementById('health').textContent = player.health;
+}
+
+function gameLoop() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drawPlayer();
+    drawEnemies();
+    drawBullets();
+    spawnEnemies();
+    checkCollisions();
+    drawHUD();
+
+    if (player.health <= 0) {
+        alert('Game Over!');
+        resetGame();
+    }
+
+    requestAnimationFrame(gameLoop);
+}
+
+function resetGame() {
+    player.x = canvas.width / 2;
+    player.y = canvas.height - 100;
+    player.health = 100;
+    enemies = [];
+    bullets = [];
+    level = 1;
+    money = 0;
+}
+
+gameLoop();
